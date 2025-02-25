@@ -1,6 +1,6 @@
-// src/App.js
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { GoogleMap, LoadScript, Marker, InfoWindow } from '@react-google-maps/api';
+import { MarkerClusterer } from '@googlemaps/markerclusterer';
 
 // Your Google Maps API key
 const googleMapsApiKey = 'AIzaSyDrl5HtC_bvZ1Df3Tb5lCrhS6-DHE5PbR4';
@@ -8,6 +8,7 @@ const googleMapsApiKey = 'AIzaSyDrl5HtC_bvZ1Df3Tb5lCrhS6-DHE5PbR4';
 const App = () => {
   const [pins, setPins] = useState([]); // To store pin positions and descriptions
   const [selectedPin, setSelectedPin] = useState(null); // To store selected pin for InfoWindow
+  const mapRef = useRef(null); // Ref to store the map instance
 
   const containerStyle = {
     width: '100%',
@@ -48,7 +49,30 @@ const App = () => {
 
   const deletePin = (pinToDelete) => {
     setPins(pins.filter(pin => pin !== pinToDelete));
-  }
+  };
+
+  // Initialize the MarkerClusterer when the map is loaded
+  const onLoad = (map) => {
+    mapRef.current = map;
+  };
+
+  useEffect(() => {
+    if (mapRef.current && pins.length > 0) {
+      const markers = pins.map((pin, index) => {
+        const marker = new window.google.maps.Marker({
+          position: { lat: pin.lat, lng: pin.lng },
+          map: mapRef.current,
+        });
+
+        marker.addListener('click', () => handleMarkerClick(pin));
+
+        return marker;
+      });
+
+      new MarkerClusterer({ map: mapRef.current, markers });
+    }
+  }, [pins]);
+
   return (
     <div className="App">
       <LoadScript googleMapsApiKey={googleMapsApiKey}>
@@ -57,6 +81,7 @@ const App = () => {
           center={center}
           zoom={15}
           onClick={onMapClick} // Handle map click to place a pin
+          onLoad={onLoad} // Initialize the map
         >
           {/* Render markers for each pin */}
           {pins.map((pin, index) => (
@@ -72,7 +97,7 @@ const App = () => {
                     <p>{pin.description}</p>
                     <h3>Building Location</h3>
                     <p>{pin.building}</p>
-                    <button onClick = {() => deletePin(pin)}>Resolve</button>
+                    <button onClick={() => deletePin(pin)}>Resolve</button>
                   </div>
                 </InfoWindow>
               )}
@@ -81,7 +106,6 @@ const App = () => {
         </GoogleMap>
       </LoadScript>
       <h1>List of Items</h1>
-      
     </div>
   );
 };
