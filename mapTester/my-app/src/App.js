@@ -17,26 +17,17 @@ const App = () => {
 
   const center = {
     lat: 33.776, // Default latitude (San Francisco)
-    lng: -84.399, // Default longitude (San Francisco)
+    lng: -84.399,
   };
 
-  const onMapClick = (event) => {
-    // Prompt the user for a description
-    const description = prompt("Enter a description for this pin:");
-    const building = prompt("What building is this in.");
-    if (description) {
-      // Add the new pin to the state
-      setPins([
-        ...pins,
-        {
-          lat: event.latLng.lat(),
-          lng: event.latLng.lng(),
-          description: description,
-          building: building,
-        },
-      ]);
-    }
-  };
+  // Pre-rendered pins
+  useEffect(() => {
+    const initialPins = [
+      { lat: 33.772509, lng: -84.392861, building: 'Bobby Dodd', items: []},
+      { lat: 33.773971, lng: -84.398806, building: 'Student Center', items: [] },
+    ];
+    setPins(initialPins);
+  }, []);
 
   const handleMarkerClick = (pin) => {
     // Set the selected pin for the InfoWindow
@@ -47,8 +38,46 @@ const App = () => {
     setSelectedPin(null); // Close the InfoWindow
   };
 
-  const deletePin = (pinToDelete) => {
-    setPins(pins.filter(pin => pin !== pinToDelete));
+  const addToPin = (buildingPin) => {
+    const lostItem = { "Item Description": "", "Date Found": "", "Other": "" };
+    
+    const enteredItem = prompt("In 1-2 words describe the item.");
+    if (enteredItem) {
+      lostItem["Item Description"] = enteredItem;
+    }
+  
+    const enteredDate = prompt("Put the date");
+    if (enteredDate) {
+      lostItem["Date Found"] = enteredDate;
+    }
+  
+    const enteredOther = prompt("Any other info");
+    if (enteredOther) {
+      lostItem["Other"] = enteredOther;
+    }
+  
+    // Update the pins state immutably
+    setPins(prevPins =>
+      prevPins.map(pin =>
+        pin === buildingPin
+          ? { ...pin, items: [...pin.items, lostItem] }  // Add the new lost item
+          : pin  // Keep other pins unchanged
+      )
+    );
+  };
+
+  const resolveItem = (buildingPin, itemIndex) => {
+    // Update the items list by removing the resolved item
+    setPins(prevPins =>
+      prevPins.map(pin =>
+        pin === buildingPin
+          ? {
+              ...pin,
+              items: pin.items.filter((_, index) => index !== itemIndex), // Remove the resolved item
+            }
+          : pin
+      )
+    );
   };
 
   // Initialize the MarkerClusterer when the map is loaded
@@ -80,7 +109,6 @@ const App = () => {
           mapContainerStyle={containerStyle}
           center={center}
           zoom={15}
-          onClick={onMapClick} // Handle map click to place a pin
           onLoad={onLoad} // Initialize the map
         >
           {/* Render markers for each pin */}
@@ -93,11 +121,22 @@ const App = () => {
               {selectedPin === pin && (
                 <InfoWindow onCloseClick={handleCloseInfoWindow}>
                   <div>
-                    <h3>Pin Description</h3>
-                    <p>{pin.description}</p>
-                    <h3>Building Location</h3>
+                    <h3>Building</h3>
                     <p>{pin.building}</p>
-                    <button onClick={() => deletePin(pin)}>Resolve</button>
+                    {/* Display the lost items */}
+                    <h3>All Lost Items:</h3>
+                    <ul>
+                      {pin.items.map((item, idx) => (
+                        <li key={idx}>
+                          <strong>{item["Item Description"]}</strong><br />
+                          Date Found: {item["Date Found"]}<br />
+                          {item["Other"] && <em>Other Info: {item["Other"]}</em>}
+                          <br />
+                          <button onClick={() => resolveItem(pin, idx)}>Resolve</button>
+                        </li>
+                      ))}
+                    </ul>
+                    <button onClick={() => addToPin(pin)}>Add Item</button>
                   </div>
                 </InfoWindow>
               )}
@@ -106,6 +145,19 @@ const App = () => {
         </GoogleMap>
       </LoadScript>
       <h1>List of Items</h1>
+      <ul>
+        {pins.map((pin, pinIndex) => (
+          pin.items.map((item, idx) => (
+            <li key={`${pinIndex}-${idx}`}>
+              <strong>{item["Item Description"]}</strong><br />
+              Date Found: {item["Date Found"]}<br />
+              {item["Other"] && <em>Other Info: {item["Other"]}</em>}
+              <br />
+              <button onClick={() => resolveItem(pin, idx)}>Resolve</button>
+            </li>
+          ))
+        ))}
+      </ul>
     </div>
   );
 };
